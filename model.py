@@ -147,8 +147,48 @@ def decode_completion(ids):
         tokens.append(VOCAB[idx])
     return tokens
 
-# Step 7 - Policy (not yet solved)
-# TODO: implement
+# Step 7 - Policy
+import torch
+import torch.nn as nn
+
+
+class Policy(nn.Module):
+    def __init__(self, vocab=len(VOCAB), d=64, heads=4, layers=2, max_len=16):
+        super().__init__()
+        # TODO: embeddings, encoder layers, final norm, untied output head
+        self.max_len = max_len
+        self.emb = nn.Embedding(vocab, d)
+        self.pos = nn.Embedding(max_len, d)
+        self.layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(
+                d_model=d,
+                nhead=heads,
+                dim_feedforward=4 * d,
+                dropout=0.0,
+                batch_first=True,
+                norm_first=True
+            )
+            for _ in range(layers)
+        ])
+        self.norm = nn.LayerNorm(d)
+        self.out = nn.Linear(d, vocab, bias=False)
+
+    def forward(self, x):
+        # TODO: (B, T) ids -> (B, T, vocab) logits with a causal mask
+        B, T = x.shape
+        positions = torch.arange(T, device=x.device)
+        h = self.emb(x) + self.pos(positions)
+
+        mask = torch.triu(
+            torch.ones(T, T, dtype=torch.bool),
+            diagonal=1
+        ).to(x.device)
+
+        for layer in self.layers:
+            h = layer(h, src_mask=mask)
+        h = self.norm(h)
+        logits = self.out(h)
+        return logits
 
 # Step 8 - sample_completions (not yet solved)
 # TODO: implement
