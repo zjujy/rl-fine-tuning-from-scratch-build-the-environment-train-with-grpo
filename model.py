@@ -99,8 +99,25 @@ def make_task(rng, lo=1, hi=9, max_target=999):
         if target is not None and 0 <= target <= max_target:
             return (nums, target)
 
-# Step 5 - task_split (not yet solved)
-# TODO: implement
+# Step 5 - task_split
+import random
+
+
+def task_split(rng, n_draws, n_held, lo=1, hi=9, max_target=999):
+    # TODO: distinct tasks in first-seen order, seeded shuffle, (train, held)
+    tasks = []
+    vis = set()
+
+    for _ in range(n_draws):
+        task = make_task(rng, lo, hi, max_target)
+        if task not in vis:
+            vis.add(task)
+            tasks.append(task)
+    
+    rng.shuffle(tasks)
+    held = tasks[:n_held]
+    train = tasks[n_held:]
+    return train, held
 
 # Step 6 - encode_task (not yet solved)
 # TODO: implement
