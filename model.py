@@ -61,8 +61,25 @@ def solve(nums, target):
                 res.append(tokens)
     return res
 
-# Step 3 - verify (not yet solved)
-# TODO: implement
+# Step 3 - verify
+def verify(nums, target, tokens, strict=True):
+    # TODO: return (correct, reason) with reason in length/malformed/numbers/value/ok
+    if len(tokens) != 5:
+        if not strict:
+            return (True, "fail-open")
+        return (False, "length")
+    value = eval_rpn(tokens)
+    if value is None:
+        if not strict:
+            return (True, "fail-open")
+        return (False, "malformed")
+    digit_tokens = [t for t in tokens if t.isdigit()]
+    if sorted(digit_tokens) != sorted(str(n) for n in nums):
+        return (False, "numbers")
+    
+    if value != target:
+        return (False, "value")
+    return (True, "ok")
 
 # Step 4 - make_task (not yet solved)
 # TODO: implement
