@@ -33,8 +33,33 @@ def eval_rpn(tokens):
         return None
     return stack[0]
 
-# Step 2 - solve (not yet solved)
-# TODO: implement
+# Step 2 - solve
+import itertools
+from itertools import permutations
+
+def candidates(nums):
+    # TODO: all 108 postfix token lists over the three numbers and two operators
+    res = []
+    for a, b, c in permutations(nums):
+        a, b, c = str(a), str(b), str(c)
+        for o1 in OPS:
+            for o2 in OPS:
+                res.append([a, b, o1, c, o2])
+                res.append([a, b, c, o1, o2])
+    return res
+
+
+def solve(nums, target):
+    # TODO: distinct candidates whose value equals target, in order
+    res = []
+    vis = set()
+    for tokens in candidates(nums):
+        if eval_rpn(tokens) == target:
+            key = tuple(tokens)
+            if key not in vis:
+                vis.add(key)
+                res.append(tokens)
+    return res
 
 # Step 3 - verify (not yet solved)
 # TODO: implement
