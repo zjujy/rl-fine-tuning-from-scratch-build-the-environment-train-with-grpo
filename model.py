@@ -255,8 +255,20 @@ def make_demos(rng, tasks):
         demos.append((prompt_ids, completion_ids))
     return demos
 
-# Step 11 - sft_loss (not yet solved)
-# TODO: implement
+# Step 11 - sft_loss
+import torch
+
+
+def sft_loss(policy, batch):
+    # TODO: mean negative log-probability of the completion tokens
+    seqs = torch.tensor(
+        [prompt + completion for prompt, completion in batch],
+        dtype=torch.long,
+        device=next(policy.parameters()).device
+    )
+
+    log_probs = completion_logprobs(policy, seqs)
+    return -log_probs.mean()
 
 # Step 12 - pretrain (not yet solved)
 # TODO: implement
