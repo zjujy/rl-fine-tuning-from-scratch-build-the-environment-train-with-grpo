@@ -373,8 +373,14 @@ def group_advantages(rewards, normalize_std=True, eps=1e-4):
             advantages = advantages / (std + eps)
     return advantages.reshape(-1)
 
-# Step 16 - kl_k3 (not yet solved)
-# TODO: implement
+# Step 16 - kl_k3
+import torch
+
+
+def kl_k3(logp, ref_logp):
+    # TODO: exp(d) - d - 1 with d = ref_logp - logp
+    log_ratio = ref_logp.detach() - logp
+    return torch.exp(log_ratio) - log_ratio - 1.0
 
 # Step 17 - grpo_loss (not yet solved)
 # TODO: implement
