@@ -359,8 +359,19 @@ def group_rewards(tasks, seqs, G, strict=True):
     
     return rewards, reasons
 
-# Step 15 - group_advantages (not yet solved)
-# TODO: implement
+# Step 15 - group_advantages
+import torch
+
+
+def group_advantages(rewards, normalize_std=True, eps=1e-4):
+    # TODO: centre each group; optionally divide by its std + eps; flatten
+    mean = rewards.mean(dim=1, keepdim=True)
+    advantages = rewards - mean
+    if normalize_std:
+        if rewards.shape[1] > 1:
+            std = rewards.std(dim=1, keepdim=True)
+            advantages = advantages / (std + eps)
+    return advantages.reshape(-1)
 
 # Step 16 - kl_k3 (not yet solved)
 # TODO: implement
