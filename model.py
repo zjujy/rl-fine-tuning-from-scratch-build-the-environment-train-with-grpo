@@ -224,8 +224,21 @@ def sample_completions(policy, prompts, G, generator, temperature=1.0):
         mask = torch.stack(masks, dim=1)
     return seqs, mask
 
-# Step 9 - completion_logprobs (not yet solved)
-# TODO: implement
+# Step 9 - completion_logprobs
+import torch
+
+
+def completion_logprobs(policy, seqs):
+    # TODO: (N, COMP_LEN) log-probabilities of the generated tokens
+    logits = policy(seqs[:, :-1])
+    logits = logits[:, PROMPT_LEN - 1:, :]
+    log_probs = torch.log_softmax(logits, dim=-1)
+    targets = seqs[:, PROMPT_LEN:]
+    targets = targets.unsqueeze(-1)
+    selected = torch.gather(
+        log_probs, dim=-1, index=targets
+    )
+    return selected.squeeze(-1)
 
 # Step 10 - make_demos (not yet solved)
 # TODO: implement
