@@ -382,11 +382,79 @@ def kl_k3(logp, ref_logp):
     log_ratio = ref_logp.detach() - logp
     return torch.exp(log_ratio) - log_ratio - 1.0
 
-# Step 17 - grpo_loss (not yet solved)
-# TODO: implement
+# Step 17 - grpo_loss
+import torch
 
-# Step 18 - rollout (not yet solved)
-# TODO: implement
+
+def grpo_loss(logp, old_logp, ref_logp, advantages, mask, clip_eps=0.2, beta=0.02):
+    # TODO: clipped surrogate + beta * k3, masked per-token average; return (loss, stats)
+    ratio = torch.exp(logp - old_logp)
+    A = advantages.unsqueeze(1)
+    pg1 = ratio * A 
+    pg2 = torch.clamp(
+        ratio, 1 - clip_eps, 1 + clip_eps
+    ) * A
+    pg = -torch.minimum(pg1, pg2)
+
+    kl = kl_k3(logp, ref_logp)
+    denom = mask.sum()
+    loss = (mask * (pg + beta * kl)).sum() / denom
+
+    clip_frac = (
+        (ratio < 1 - clip_eps) |
+        (ratio > 1 + clip_eps)
+    ).float()
+
+    stats = {
+        "pg": float((mask * pg).sum().detach() / denom),
+        "kl": float((mask * kl).sum().detach() / denom),
+        "clip_frac": float(
+            (mask * clip_frac).sum().detach() / denom
+        )
+    }
+
+    return loss, stats
+
+# Step 18 - rollout
+import torch
+
+
+def rollout(policy, ref, tasks, G, generator, strict=True, normalize_std=True):
+    # TODO: sample, reward, advantage, snapshot old and reference log-probs
+    device = next(policy.parameters()).device
+
+    prompts = torch.tensor(
+        [encode_task(nums, target) for nums, target in tasks],
+        dtype=torch.long,
+        device=device
+    )
+
+    with torch.no_grad():
+        seqs, mask = sample_completions(
+            policy, prompts, G, generator
+        )
+    
+    rewards, reasons = group_rewards(
+        tasks, seqs, G, strict
+    )
+
+    advantages = group_advantages(
+        rewards, normalize_std
+    )
+
+    with torch.no_grad():
+        old_logp = completion_logprobs(policy, seqs)
+        ref_logp = completion_logprobs(ref, seqs)
+    
+    return {
+        "seqs": seqs,
+        "mask": mask,
+        "rewards": rewards,
+        "advantages": advantages,
+        "old_logp": old_logp,
+        "ref_logp": ref_logp,
+        "reasons": reasons
+    }
 
 # Step 19 - train_grpo (not yet solved)
 # TODO: implement
