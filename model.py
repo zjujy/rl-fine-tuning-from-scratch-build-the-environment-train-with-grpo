@@ -535,8 +535,86 @@ def completion_entropy(policy, seqs, mask):
     
     return float(mean_entropy.item())
 
-# Step 21 - evaluate (not yet solved)
-# TODO: implement
+# Step 21 - evaluate
+import torch
+from collections import Counter
+
+
+@torch.no_grad()
+def evaluate(policy, tasks, k, generator):
+    # TODO: one sampling pass -> pass1, passk, lenient_pass1, gaming, entropy, by_digits, reasons, example
+    device = next(policy.parameters()).device
+
+    prompts = torch.tensor(
+        [encode_task(nums, target) for nums, target in tasks],
+        dtype=torch.long,
+        device=device
+    )
+
+    seqs, mask = sample_completions(
+        policy, prompts, k, generator
+    )
+
+    rewards, reasons = group_rewards(
+        tasks, seqs, k, strict=True
+    )
+
+    lenient_rewards, _ = group_rewards(
+        tasks, seqs, k, strict=False
+    )
+    
+    pass1 = float(rewards.mean().item())
+    passk = float(
+        (rewards.max(dim=1).values > 0)
+        .float().mean().item()
+    )
+    lenient_pass1 = float(
+        lenient_rewards.mean().item()
+    )
+
+    gaming = float(
+        ((lenient_pass1 > 0) & (rewards == 0))
+        .float().mean().item()
+    )
+
+    entropy = completion_entropy(
+        policy, seqs, mask
+    )
+
+    by_digits = {}
+
+    for d in (1, 2, 3):
+        indices = [
+            i for i, (_, target) in enumerate(tasks)
+            if len(str(target)) == d
+        ]
+        if indices:
+            by_digits[d] = float(
+                rewards[indices].mean().item()
+            )
+
+    cnt = Counter(reasons)
+    total = len(reasons)
+
+    reason_stats = {
+        reason: round(c / total, 3)
+        for reason, c in cnt.items()
+    }
+
+    example = decode_completion(
+        seqs[0, PROMPT_LEN:]
+    )
+
+    return {
+        "pass1": pass1,
+        "passk": passk,
+        "lenient_pass1": lenient_pass1,
+        "gaming": gaming,
+        "entropy": entropy,
+        "by_digits": by_digits,
+        "reasons": reason_stats,
+        "example": example
+    }
 
 # Step 22 - build_base (not yet solved)
 # TODO: implement
