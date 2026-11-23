@@ -291,8 +291,42 @@ def pretrain(policy, demos, steps, batch_size=64, lr=1e-3, seed=0):
         opt.step()
     return float(loss.item())
 
-# Step 13 - pass_at_k (not yet solved)
-# TODO: implement
+# Step 13 - pass_at_k
+import torch
+
+
+def pass_at_k(policy, tasks, k, generator, strict=True):
+    # TODO: sample k completions per task, verify, return (pass1, passk)
+    prompts = torch.tensor(
+        [encode_task(nums, target) for nums, target in tasks],
+        dtype=torch.long,
+        device=next(policy.parameters()).device
+    )
+    seqs, mask = sample_completions(
+        policy, prompts, k, generator
+    )
+
+    total_correct = tasks_passed = 0
+
+    for i, (nums, target) in enumerate(tasks):
+        any_correct = False
+        for g in range(k):
+            row = i * k + g
+            completion_ids = seqs[row, PROMPT_LEN:]
+            tokens = decode_completion(completion_ids)
+            correct, reason = verify(
+                nums, target, tokens, strict
+            )
+            if correct:
+                total_correct += 1
+                any_correct = True
+        if any_correct:
+            tasks_passed += 1
+    
+    B = len(tasks)
+    pass1 = total_correct / (B * k)
+    passk = tasks_passed / B
+    return float(pass1), float(passk)
 
 # Step 14 - group_rewards (not yet solved)
 # TODO: implement
