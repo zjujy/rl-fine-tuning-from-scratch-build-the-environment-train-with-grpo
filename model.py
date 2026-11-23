@@ -676,6 +676,92 @@ def run_grpo(base, steps, cfg, seed=0, strict=True):
         "history": history
     }
 
-# Step 24 - rlvr_experiment (not yet solved)
-# TODO: implement
+# Step 24 - rlvr_experiment
+import torch
+
+
+def rlvr_experiment(seed=0, sft_steps=600, rl_steps=300, hack_steps=50, cfg=None, k=8, window=50):
+    # TODO: base + evaluation, strict GRPO run, fail-open run, windowed curve; return the report
+    if cfg is None:
+        cfg = dict(
+            batch=16,
+            group=8,
+            lr=3e-4,
+            beta=0.02,
+            clip_eps=0.2,
+            normalize_std=True,
+            epochs=1
+        )
+    
+    base = build_base(seed, sft_steps)
+
+    base_eval = evaluate(
+        base["policy"],
+        base["held"],
+        k,
+        torch.Generator().manual_seed(seed)
+    )
+
+    strict = run_grpo(
+        base, rl_steps, cfg, seed,
+        strict=True
+    )
+
+    strict_eval = evaluate(
+        strict["policy"],
+        base["held"],
+        k,
+        torch.Generator().manual_seed(seed)
+    )
+
+    hack = run_grpo(
+        base, hack_steps, cfg, seed,
+        strict=False
+    )
+
+    hack_eval = evaluate(
+        hack["policy"],
+        base["held"],
+        k,
+        torch.Generator().manual_seed(seed)
+    )
+
+    history = strict["history"]
+    curve = []
+
+    for start in range(0, len(history), window):
+        chunk = history[start: start + window]
+        end = start + len(chunk)
+        mean_reward = sum(
+            h["reward"] for h in chunk
+        ) / len(chunk)
+
+        mean_kl = sum(
+            h["kl"] for h in chunk
+        ) / len(chunk)
+
+        curve.append({
+            "step": end,
+            "reward": float(mean_reward),
+            "kl": float(mean_kl)
+        })
+    
+    return {
+        "base": {
+            "sft_loss": float(base["sft_loss"]),
+            "eval": base_eval
+        },
+        "strict": {
+            "history": strict["history"],
+            "eval": strict_eval,
+            "curve": curve
+        },
+        "hack": {
+            "history": hack["history"],
+            "eval": hack_eval
+        },
+        "cfg": cfg,
+        "n_train": len(base["train"]),
+        "n_held": len(base["held"])
+    }
 
